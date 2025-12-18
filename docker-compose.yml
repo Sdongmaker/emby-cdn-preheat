@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  emby-cdn-preheat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: emby-cdn-preheat
+    restart: unless-stopped
+    ports:
+      - "8899:8899"
+    environment:
+      # 服务器配置
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8899
+
+      # 日志级别
+      - LOG_LEVEL=INFO
+
+      # 腾讯云 API 凭证（请修改为实际值）
+      - TENCENT_SECRET_ID=${TENCENT_SECRET_ID:-your_secret_id_here}
+      - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY:-your_secret_key_here}
+
+      # CDN 域名
+      - CDN_DOMAIN=${CDN_DOMAIN:-nginx.example.com}
+
+      # 预热配置
+      - PREHEAT_ENABLED=${PREHEAT_ENABLED:-false}
+      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50000}
+      - PREHEAT_BATCH_SIZE=${PREHEAT_BATCH_SIZE:-10}
+
+    volumes:
+      # 挂载日志目录（可选）
+      - ./logs:/app/logs
+
+      # 如果使用 .env 文件，可以取消注释下面这行
+      # - ./.env:/app/.env:ro
+
+    networks:
+      - emby-network
+
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8899/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+networks:
+  emby-network:
+    driver: bridge

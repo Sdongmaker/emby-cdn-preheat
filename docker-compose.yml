@@ -37,7 +37,7 @@ services:
       # - ./.env:/app/.env:ro
 
     networks:
-      - emby-network
+      - 1panel-network
 
     healthcheck:
       test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8899/')"]
@@ -47,5 +47,5 @@ services:
       start_period: 5s
 
 networks:
-  emby-network:
-    driver: bridge
+  1panel-network:
+    external: true

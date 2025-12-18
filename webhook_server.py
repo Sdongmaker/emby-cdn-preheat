@@ -88,12 +88,33 @@ async def emby_webhook(request: Request):
         "Server": {...}
     }
     """
-    try:
-        # 获取请求数据
-        data = await request.json()
+    # 先获取原始请求体，用于调试
+    raw_body = await request.body()
 
-        # 记录原始数据（用于调试）
-        logger.debug(f"收到 Webhook 数据: {json.dumps(data, ensure_ascii=False, indent=2)}")
+    # 输出请求详细信息（开发调试用）
+    logger.info("=" * 80)
+    logger.info("收到 Webhook 请求")
+    logger.info(f"请求来源: {request.client.host}:{request.client.port}")
+    logger.info(f"Content-Type: {request.headers.get('content-type', 'Not Set')}")
+    logger.info(f"请求头: {dict(request.headers)}")
+    logger.info(f"原始请求体长度: {len(raw_body)} bytes")
+    logger.info(f"原始请求体内容:\n{raw_body.decode('utf-8', errors='replace')}")
+    logger.info("=" * 80)
+
+    try:
+        # 解析 JSON 数据
+        try:
+            data = json.loads(raw_body)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON 解析失败: {str(e)}")
+            logger.error(f"无法解析的内容: {raw_body.decode('utf-8', errors='replace')[:500]}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid JSON data: {str(e)}"
+            )
+
+        # 记录解析后的数据（用于调试）
+        logger.info(f"解析后的 JSON 数据:\n{json.dumps(data, ensure_ascii=False, indent=2)}")
 
         # 获取事件类型
         event_type = data.get('Event', '')
@@ -138,9 +159,8 @@ async def emby_webhook(request: Request):
                 }
             )
 
-    except json.JSONDecodeError:
-        logger.error("无法解析 JSON 数据")
-        raise HTTPException(status_code=400, detail="Invalid JSON data")
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"处理 Webhook 时出错: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

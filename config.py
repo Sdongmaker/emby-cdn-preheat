@@ -52,7 +52,6 @@ CDN_DOMAIN = os.getenv("CDN_DOMAIN", "nginx.example.com")
 
 # 预热配置
 PREHEAT_ENABLED = os.getenv("PREHEAT_ENABLED", "false").lower() == "true"
-MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "50000"))  # 最大预热文件大小（MB）
 PREHEAT_BATCH_SIZE = int(os.getenv("PREHEAT_BATCH_SIZE", "10"))  # 每批预热的URL数量
 
 # ==================== Telegram Bot 审核配置 ====================

@@ -10,6 +10,7 @@ from telegram.ext import Application, CallbackQueryHandler, CommandHandler, Cont
 from telegram.error import TelegramError
 import config
 from database import db
+from cdn_preheat import cdn_service
 
 logger = logging.getLogger(__name__)
 
@@ -227,10 +228,23 @@ class TelegramReviewBot:
             db.approve_request(request_id, reviewed_by)
             result_emoji = "✅"
             result_text = "已同意预热"
-            result_action = "将开始 CDN 预热"
 
-            # TODO: 这里将来可以触发实际的 CDN 预热操作
-            logger.info(f"CDN 预热请求已批准: {request['cdn_url']}")
+            # 触发 CDN 预热
+            cdn_url = request['cdn_url']
+            logger.info(f"开始 CDN 预热: {cdn_url}")
+
+            try:
+                preheat_result = await cdn_service.preheat_url(cdn_url)
+
+                if preheat_result['success']:
+                    result_action = f"CDN 预热已提交\n任务 ID: {preheat_result['task_id']}"
+                    logger.info(f"✅ CDN 预热成功: task_id={preheat_result['task_id']}")
+                else:
+                    result_action = f"CDN 预热失败: {preheat_result['message']}"
+                    logger.error(f"❌ CDN 预热失败: {preheat_result['message']}")
+            except Exception as e:
+                result_action = f"CDN 预热出错: {str(e)}"
+                logger.error(f"❌ CDN 预热异常: {str(e)}", exc_info=True)
 
         elif action == "reject":
             db.reject_request(request_id, reviewed_by)

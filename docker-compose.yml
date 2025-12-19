@@ -26,7 +26,6 @@ services:
 
       # 预热配置
       - PREHEAT_ENABLED=${PREHEAT_ENABLED:-false}
-      - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50000}
       - PREHEAT_BATCH_SIZE=${PREHEAT_BATCH_SIZE:-10}
 
       # Telegram Bot 审核配置

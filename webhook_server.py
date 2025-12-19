@@ -49,9 +49,7 @@ def apply_path_mapping(path: str, mappings: Dict[str, str]) -> Optional[str]:
     for source_prefix, target_prefix in sorted_mappings:
         if path.startswith(source_prefix):
             mapped_path = path.replace(source_prefix, target_prefix, 1)
-            logger.info(f"路径映射: {source_prefix} → {target_prefix}")
-            logger.info(f"  原始路径: {path}")
-            logger.info(f"  映射后: {mapped_path}")
+            logger.info(f"  🔄 应用映射规则: {source_prefix} → {target_prefix}")
             return mapped_path
 
     return None
@@ -70,7 +68,7 @@ def read_strm_file(strm_path: str) -> Optional[str]:
     try:
         # 确保文件存在
         if not os.path.exists(strm_path):
-            logger.warning(f"STRM 文件不存在: {strm_path}")
+            logger.error(f"  ❌ 文件不存在: {strm_path}")
             return None
 
         # 读取 strm 文件内容（通常是一行 URL 或路径）
@@ -78,14 +76,16 @@ def read_strm_file(strm_path: str) -> Optional[str]:
             content = f.read().strip()
 
         if not content:
-            logger.warning(f"STRM 文件内容为空: {strm_path}")
+            logger.error(f"  ❌ 文件内容为空")
             return None
 
-        logger.info(f"STRM 文件内容: {content}")
         return content
 
+    except PermissionError:
+        logger.error(f"  ❌ 权限不足，无法读取文件")
+        return None
     except Exception as e:
-        logger.error(f"读取 STRM 文件失败 {strm_path}: {str(e)}")
+        logger.error(f"  ❌ 读取失败: {str(e)}")
         return None
 
 
@@ -105,43 +105,100 @@ def resolve_media_path(emby_path: str) -> Tuple[Optional[str], Optional[str]]:
     Returns:
         (宿主机路径, CDN URL) 元组，失败返回 (None, None)
     """
-    logger.info("=" * 60)
-    logger.info(f"开始解析路径: {emby_path}")
+    logger.info("=" * 80)
+    logger.info("🎬 开始路径解析流程")
+    logger.info("=" * 80)
+    logger.info(f"📥 接收到的 Emby 路径: {emby_path}")
+    logger.info("")
 
-    # 步骤 1: Emby 容器路径 → 宿主机路径
+    # ========== 步骤 1: Emby 容器路径 → 宿主机路径 ==========
+    logger.info("【步骤 1/4】Emby 容器路径 → 宿主机路径")
+    logger.info("-" * 80)
+    logger.info(f"  输入路径: {emby_path}")
+
     host_path = apply_path_mapping(emby_path, config.EMBY_CONTAINER_MAPPINGS)
     if not host_path:
-        logger.warning(f"无法映射 Emby 容器路径，请检查 EMBY_CONTAINER_MAPPINGS 配置")
-        host_path = emby_path  # 使用原始路径
+        logger.warning(f"  ⚠️  未找到匹配的容器映射规则")
+        logger.warning(f"  💡 提示：请检查 config.py 中的 EMBY_CONTAINER_MAPPINGS 配置")
+        logger.warning(f"  使用原始路径继续: {emby_path}")
+        host_path = emby_path
+    else:
+        logger.info(f"  ✅ 映射成功")
+        logger.info(f"  输出路径: {host_path}")
 
-    # 步骤 2: 检查是否为 strm 文件
+    logger.info("")
+
+    # ========== 步骤 2: 检查是否为 STRM 文件 ==========
+    logger.info("【步骤 2/4】检查文件类型")
+    logger.info("-" * 80)
+
     if host_path.lower().endswith('.strm'):
-        logger.info(f"检测到 STRM 文件: {host_path}")
+        logger.info(f"  🎯 检测到 STRM 文件: {os.path.basename(host_path)}")
+        logger.info(f"  📂 STRM 文件完整路径: {host_path}")
+        logger.info("")
 
-        # 读取 strm 文件内容
+        # ========== 步骤 2.1: 读取 STRM 文件内容 ==========
+        logger.info("【步骤 2.1/4】读取 STRM 文件内容")
+        logger.info("-" * 80)
+
         real_path = read_strm_file(host_path)
         if not real_path:
-            logger.error(f"无法读取 STRM 文件内容")
+            logger.error(f"  ❌ 无法读取 STRM 文件内容")
+            logger.error(f"  💡 可能的原因:")
+            logger.error(f"     1. 文件不存在或路径错误")
+            logger.error(f"     2. 没有读取权限")
+            logger.error(f"     3. 文件内容为空")
+            logger.info("=" * 80)
             return (None, None)
 
-        # 步骤 3: 应用 strm 路径映射
+        logger.info(f"  ✅ 读取成功")
+        logger.info(f"  📝 STRM 文件内容: {real_path}")
+        logger.info("")
+
+        # ========== 步骤 3: STRM 内容路径映射 ==========
+        logger.info("【步骤 3/4】STRM 内容路径映射（如果需要）")
+        logger.info("-" * 80)
+        logger.info(f"  输入路径: {real_path}")
+
         mapped_real_path = apply_path_mapping(real_path, config.STRM_MOUNT_MAPPINGS)
         if mapped_real_path:
+            logger.info(f"  ✅ 映射成功")
+            logger.info(f"  输出路径: {mapped_real_path}")
             real_path = mapped_real_path
         else:
-            logger.info(f"STRM 内容路径未映射，使用原始路径: {real_path}")
+            logger.info(f"  ℹ️  未配置 STRM 路径映射或路径已是宿主机路径")
+            logger.info(f"  使用原始路径: {real_path}")
 
         host_path = real_path
+        logger.info("")
+    else:
+        logger.info(f"  📄 普通媒体文件: {os.path.basename(host_path)}")
+        logger.info(f"  跳过 STRM 处理，直接使用宿主机路径")
+        logger.info("")
 
-    # 步骤 4: 宿主机路径 → CDN URL
+    # ========== 步骤 4: 宿主机路径 → CDN URL ==========
+    logger.info("【步骤 4/4】宿主机路径 → CDN URL")
+    logger.info("-" * 80)
+    logger.info(f"  输入路径: {host_path}")
+
     cdn_url = apply_path_mapping(host_path, config.CDN_URL_MAPPINGS)
     if not cdn_url:
-        logger.warning(f"无法生成 CDN URL，请检查 CDN_URL_MAPPINGS 配置")
+        logger.warning(f"  ⚠️  未找到匹配的 CDN 映射规则")
+        logger.warning(f"  💡 提示：请检查 config.py 中的 CDN_URL_MAPPINGS 配置")
+        logger.info(f"  CDN URL: 未生成")
+    else:
+        logger.info(f"  ✅ 映射成功")
+        logger.info(f"  📡 CDN URL: {cdn_url}")
 
-    logger.info(f"最终解析结果:")
-    logger.info(f"  宿主机路径: {host_path}")
-    logger.info(f"  CDN URL: {cdn_url or '未生成'}")
-    logger.info("=" * 60)
+    logger.info("")
+    logger.info("=" * 80)
+    logger.info("📊 最终解析结果汇总")
+    logger.info("=" * 80)
+    logger.info(f"  1️⃣  Emby 容器路径: {emby_path}")
+    logger.info(f"  2️⃣  宿主机实际路径: {host_path}")
+    logger.info(f"  3️⃣  CDN 预热 URL: {cdn_url or '未生成'}")
+    logger.info("=" * 80)
+    logger.info("")
 
     return (host_path, cdn_url)
 

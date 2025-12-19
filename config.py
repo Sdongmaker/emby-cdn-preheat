@@ -20,32 +20,25 @@ SERVER_PORT = int(os.getenv("SERVER_PORT", "8899"))
 # 将 Emby 容器内看到的路径映射到宿主机实际路径
 # 注意：映射会按照最长匹配优先的原则进行
 EMBY_CONTAINER_MAPPINGS = {
-    # 示例：Emby 容器内的 /media/剧集/ 映射到宿主机的 /mnt/storage/series/
-    "/media/剧集/": "/mnt/storage/series/",
-    "/media/电影/": "/mnt/storage/movies/",
-    "/media/动漫/": "/mnt/storage/anime/",
-    # strm 文件目录映射
-    "/strm/data5/": "/mnt/strm/data5/",
+    # Emby 容器挂载: /media:/media
+    # 容器内路径 /media/xxx → 宿主机路径 /mnt/media/xxx
+    "/media/": "/mnt/media/",
 }
 
 # 2. STRM 文件内容路径 → 宿主机路径映射（可选）
 # 如果 strm 文件内容中的路径与实际宿主机路径不同，需要配置此映射
-# 例如：strm 文件内容是 smb://nas/media/xxx.mkv，需要映射到本地路径
+# 本例中 STRM 文件内容已经是正确的宿主机路径，所以留空
 STRM_MOUNT_MAPPINGS = {
-    # 示例：strm 文件内的 smb 路径映射到宿主机挂载路径
-    "smb://nas/media/": "/mnt/nas/media/",
-    "nfs://storage/": "/mnt/nfs/",
-    # 或者本地路径映射
-    "/data/": "/mnt/storage/",
+    # 示例：如果 STRM 内容是网络路径，需要映射到本地挂载点
+    # "smb://nas/media/": "/mnt/nas/media/",
+    # "nfs://storage/": "/mnt/nfs/",
 }
 
 # 3. 宿主机路径 → CDN URL 映射
 # 将宿主机实际路径映射到 CDN 访问 URL，用于预热
 CDN_URL_MAPPINGS = {
-    "/mnt/storage/series/": "https://cdn.example.com/series/",
-    "/mnt/storage/movies/": "https://cdn.example.com/movies/",
-    "/mnt/storage/anime/": "https://cdn.example.com/anime/",
-    "/mnt/nas/media/": "https://cdn.example.com/nas/",
+    # 宿主机路径 /mnt/media/xxx → CDN URL https://qiufeng.huaijiufu.com/xxx
+    "/mnt/media/": "https://qiufeng.huaijiufu.com/",
 }
 
 # 日志配置

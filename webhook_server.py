@@ -116,6 +116,12 @@ async def handle_emby_webhook(request: Request):
         # 记录解析后的数据（用于调试）
         logger.info(f"解析后的 JSON 数据:\n{json.dumps(data, ensure_ascii=False, indent=2)}")
 
+        # 检查是否是包装的数据格式（包含 body_json 字段）
+        if 'body_json' in data:
+            logger.info("检测到包装格式，提取 body_json 字段")
+            data = data['body_json']
+            logger.info(f"提取后的 Emby 数据:\n{json.dumps(data, ensure_ascii=False, indent=2)}")
+
         # 获取事件类型
         event_type = data.get('Event', '')
 

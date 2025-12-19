@@ -35,6 +35,11 @@ services:
       - REVIEW_TIMEOUT_SECONDS=${REVIEW_TIMEOUT_SECONDS:-86400}
       - AUTO_APPROVE_IF_NO_REVIEW=${AUTO_APPROVE_IF_NO_REVIEW:-false}
 
+      # 智能 URL 匹配配置（用于单体 Emby 部署）
+      - ENABLE_SMART_URL_MATCHING=${ENABLE_SMART_URL_MATCHING:-true}
+      - SMART_MATCH_KEYWORDS=${SMART_MATCH_KEYWORDS:-剧集,电影}
+      - SMART_MATCH_CDN_BASE=${SMART_MATCH_CDN_BASE:-https://your-cdn-domain.com/}
+
     volumes:
       # 挂载日志目录
       - ./logs:/app/logs

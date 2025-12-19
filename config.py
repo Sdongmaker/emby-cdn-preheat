@@ -41,6 +41,18 @@ CDN_URL_MAPPINGS = {
     "/media/": "https://qiufeng.huaijiufu.com/",
 }
 
+# ==================== 智能 URL 匹配配置 ====================
+# 用于单体 Emby 部署，当标准路径映射失败时启用
+
+# 是否启用智能 URL 匹配
+ENABLE_SMART_URL_MATCHING = os.getenv("ENABLE_SMART_URL_MATCHING", "true").lower() == "true"
+
+# 智能匹配的关键目录列表（按优先级排序，逗号分隔）
+SMART_MATCH_KEYWORDS = [k.strip() for k in os.getenv("SMART_MATCH_KEYWORDS", "剧集,电影").split(",") if k.strip()]
+
+# 智能匹配的 CDN 基础 URL
+SMART_MATCH_CDN_BASE = os.getenv("SMART_MATCH_CDN_BASE", "https://your-cdn-domain.com/")
+
 # 日志配置
 LOG_FILE = "webhook.log"
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

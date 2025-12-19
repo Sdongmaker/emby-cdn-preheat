@@ -94,6 +94,68 @@ def apply_path_mapping(path: str, mappings: Dict[str, str]) -> Optional[str]:
     return None
 
 
+def smart_match_cdn_url(path: str) -> Optional[str]:
+    """
+    智能匹配 CDN URL（用于单体 Emby 部署）
+
+    当标准路径映射失败时，尝试智能识别路径中的关键目录（如"剧集"、"电影"），
+    截取从关键字开始到最后的部分，拼接到 CDN 基础 URL
+
+    Args:
+        path: 原始路径
+
+    Returns:
+        匹配的 CDN URL，失败返回 None
+    """
+    if not config.ENABLE_SMART_URL_MATCHING:
+        return None
+
+    if not path or not config.SMART_MATCH_KEYWORDS:
+        return None
+
+    try:
+        logger.info("【智能 URL 匹配】")
+        logger.info(f"  🔍 原始路径: {path}")
+        logger.info(f"  🎯 搜索关键字: {config.SMART_MATCH_KEYWORDS}")
+
+        # 规范化路径（确保使用正斜杠）
+        normalized_path = path.replace('\\', '/')
+
+        # 查找第一个匹配的关键字
+        for keyword in config.SMART_MATCH_KEYWORDS:
+            # 查找关键字在路径中的位置
+            # 例如: /media/剧集/国产剧/... 中查找 "剧集"
+            keyword_pattern = f"/{keyword}/"
+
+            if keyword_pattern in normalized_path:
+                # 找到关键字的起始位置
+                start_index = normalized_path.index(keyword_pattern)
+
+                # 截取从关键字开始到结尾的部分（包括关键字前的斜杠）
+                path_suffix = normalized_path[start_index + 1:]  # +1 是为了跳过开头的 /
+
+                # 拼接 CDN URL
+                cdn_base = config.SMART_MATCH_CDN_BASE
+                if not cdn_base.endswith('/'):
+                    cdn_base += '/'
+
+                cdn_url = cdn_base + path_suffix
+
+                logger.info(f"  ✅ 匹配成功！")
+                logger.info(f"  📍 匹配关键字: {keyword}")
+                logger.info(f"  ✂️  截取部分: {path_suffix}")
+                logger.info(f"  🔗 生成 CDN URL: {cdn_url}")
+
+                return cdn_url
+
+        logger.warning(f"  ⚠️  未找到匹配的关键字")
+        return None
+
+    except Exception as e:
+        logger.error(f"  ❌ 智能匹配失败: {str(e)}")
+        return None
+
+
 def read_strm_file(strm_path: str) -> Optional[str]:
     """
     读取 strm 文件内容，获取真实的媒体文件路径
@@ -224,7 +286,23 @@ def resolve_media_path(emby_path: str) -> Tuple[Optional[str], Optional[str]]:
     if not cdn_url:
         logger.warning(f"  ⚠️  未找到匹配的 CDN 映射规则")
         logger.warning(f"  💡 提示：请检查 config.py 中的 CDN_URL_MAPPINGS 配置")
-        logger.info(f"  CDN URL: 未生成")
+
+        # 尝试智能匹配（使用原始 Emby 路径）
+        if config.ENABLE_SMART_URL_MATCHING:
+            logger.info("")
+            logger.info("  🔄 尝试智能 URL 匹配...")
+            logger.info("")
+            cdn_url = smart_match_cdn_url(emby_path)
+
+            if cdn_url:
+                logger.info(f"  ✅ 智能匹配成功")
+                logger.info(f"  📡 CDN URL: {cdn_url}")
+            else:
+                logger.warning(f"  ⚠️  智能匹配也失败了")
+                logger.info(f"  CDN URL: 未生成")
+        else:
+            logger.info(f"  ℹ️  智能匹配未启用")
+            logger.info(f"  CDN URL: 未生成")
     else:
         logger.info(f"  ✅ 映射成功")
         logger.info(f"  📡 CDN URL: {cdn_url}")

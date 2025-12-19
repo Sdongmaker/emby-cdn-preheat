@@ -20,9 +20,9 @@ SERVER_PORT = int(os.getenv("SERVER_PORT", "8899"))
 # 将 Emby 容器内看到的路径映射到宿主机实际路径
 # 注意：映射会按照最长匹配优先的原则进行
 EMBY_CONTAINER_MAPPINGS = {
-    # Emby 容器挂载: /media:/media
-    # 容器内路径 /media/xxx → 宿主机路径 /mnt/media/xxx
-    "/media/": "/mnt/media/",
+    # Emby 容器挂载: /media:/media (容器内外路径一致)
+    # 容器内路径 /media/xxx → 宿主机路径 /media/xxx
+    "/media/": "/media/",
 }
 
 # 2. STRM 文件内容路径 → 宿主机路径映射（可选）
@@ -37,8 +37,8 @@ STRM_MOUNT_MAPPINGS = {
 # 3. 宿主机路径 → CDN URL 映射
 # 将宿主机实际路径映射到 CDN 访问 URL，用于预热
 CDN_URL_MAPPINGS = {
-    # 宿主机路径 /mnt/media/xxx → CDN URL https://qiufeng.huaijiufu.com/xxx
-    "/mnt/media/": "https://qiufeng.huaijiufu.com/",
+    # 宿主机路径 /media/xxx → CDN URL https://qiufeng.huaijiufu.com/xxx
+    "/media/": "https://qiufeng.huaijiufu.com/",
 }
 
 # 日志配置

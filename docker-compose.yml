@@ -29,9 +29,22 @@ services:
       - MAX_FILE_SIZE_MB=${MAX_FILE_SIZE_MB:-50000}
       - PREHEAT_BATCH_SIZE=${PREHEAT_BATCH_SIZE:-10}
 
+      # Telegram Bot 审核配置
+      - TELEGRAM_REVIEW_ENABLED=${TELEGRAM_REVIEW_ENABLED:-true}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_ADMIN_CHAT_IDS=${TELEGRAM_ADMIN_CHAT_IDS}
+      - REVIEW_TIMEOUT_SECONDS=${REVIEW_TIMEOUT_SECONDS:-86400}
+      - AUTO_APPROVE_IF_NO_REVIEW=${AUTO_APPROVE_IF_NO_REVIEW:-false}
+
     volumes:
-      # 挂载日志目录（可选）
+      # 挂载日志目录
       - ./logs:/app/logs
+
+      # 挂载数据库文件（持久化审核记录）
+      - ./preheat_review.db:/app/preheat_review.db
+
+      # 挂载 /media 目录（只读，用于读取 STRM 文件）
+      - /media:/media:ro
 
       # 如果使用 .env 文件，可以取消注释下面这行
       # - ./.env:/app/.env:ro

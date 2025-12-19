@@ -54,3 +54,24 @@ CDN_DOMAIN = os.getenv("CDN_DOMAIN", "nginx.example.com")
 PREHEAT_ENABLED = os.getenv("PREHEAT_ENABLED", "false").lower() == "true"
 MAX_FILE_SIZE_MB = int(os.getenv("MAX_FILE_SIZE_MB", "50000"))  # 最大预热文件大小（MB）
 PREHEAT_BATCH_SIZE = int(os.getenv("PREHEAT_BATCH_SIZE", "10"))  # 每批预热的URL数量
+
+# ==================== Telegram Bot 审核配置 ====================
+# 是否启用 Telegram 人工审核
+TELEGRAM_REVIEW_ENABLED = os.getenv("TELEGRAM_REVIEW_ENABLED", "true").lower() == "true"
+
+# Telegram Bot Token (从 @BotFather 获取)
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+
+# Telegram 管理员 Chat ID (可以是多个，用逗号分隔)
+# 获取方式：给 @userinfobot 发消息，它会返回你的 Chat ID
+TELEGRAM_ADMIN_CHAT_IDS = [
+    int(chat_id.strip())
+    for chat_id in os.getenv("TELEGRAM_ADMIN_CHAT_IDS", "").split(",")
+    if chat_id.strip()
+]
+
+# 审核超时时间（秒），超时后自动拒绝
+REVIEW_TIMEOUT_SECONDS = int(os.getenv("REVIEW_TIMEOUT_SECONDS", "86400"))  # 默认 24 小时
+
+# 如果未启用 Telegram 审核，是否自动批准所有预热请求
+AUTO_APPROVE_IF_NO_REVIEW = os.getenv("AUTO_APPROVE_IF_NO_REVIEW", "false").lower() == "true"

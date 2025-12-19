@@ -11,9 +11,14 @@ import json
 from pathlib import Path
 import uvicorn
 import os
+import asyncio
 
 # 导入配置
 import config
+
+# 导入数据库和 Telegram Bot
+from database import db
+from telegram_bot import telegram_bot
 
 # 配置日志
 logging.basicConfig(
@@ -27,6 +32,40 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Emby CDN Preheat Webhook Service")
+
+
+# ==================== 应用生命周期事件 ====================
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时初始化 Telegram Bot"""
+    logger.info("=" * 80)
+    logger.info("启动 Emby CDN 预热服务")
+    logger.info("=" * 80)
+
+    if config.TELEGRAM_REVIEW_ENABLED:
+        logger.info("Telegram 审核已启用，正在初始化 Bot...")
+        success = await telegram_bot.initialize()
+        if success:
+            logger.info("✅ Telegram Bot 初始化成功")
+        else:
+            logger.error("❌ Telegram Bot 初始化失败，审核功能将不可用")
+    else:
+        logger.info("Telegram 审核未启用")
+        if config.AUTO_APPROVE_IF_NO_REVIEW:
+            logger.info("⚠️  自动批准模式已启用，所有请求将自动通过")
+        else:
+            logger.info("⚠️  自动批准模式未启用，所有请求将被忽略")
+
+    logger.info("=" * 80)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """应用关闭时清理资源"""
+    logger.info("正在关闭服务...")
+    if config.TELEGRAM_REVIEW_ENABLED:
+        await telegram_bot.shutdown()
+    logger.info("服务已关闭")
 
 
 def apply_path_mapping(path: str, mappings: Dict[str, str]) -> Optional[str]:
@@ -219,6 +258,7 @@ def process_media_item(item_data: Dict[str, Any]) -> Dict[str, str]:
         item_type = item_data.get('Type', 'Unknown')
         emby_path = item_data.get('Path', '')
         item_id = item_data.get('Id', '')
+        production_year = item_data.get('ProductionYear', '')
 
         logger.info(f"收到新媒体: {item_name} ({item_type})")
         logger.info(f"Emby 路径: {emby_path}")
@@ -226,9 +266,48 @@ def process_media_item(item_data: Dict[str, Any]) -> Dict[str, str]:
         # 解析路径，处理容器映射和 strm 文件
         host_path, cdn_url = resolve_media_path(emby_path)
 
-        # 这里可以添加 CDN 预热逻辑
-        # if cdn_url:
-        #     preheat_cdn(cdn_url)
+        # 如果生成了 CDN URL，发送审核请求
+        if cdn_url:
+            if config.TELEGRAM_REVIEW_ENABLED:
+                # 添加到数据库
+                request_id = db.add_review_request(
+                    cdn_url=cdn_url,
+                    media_name=item_name,
+                    media_type=item_type,
+                    emby_path=emby_path,
+                    host_path=host_path,
+                    media_info={
+                        'production_year': production_year,
+                        'id': item_id
+                    }
+                )
+
+                if request_id:
+                    logger.info(f"✅ 审核请求已创建: ID={request_id}")
+
+                    # 异步发送到 Telegram（不阻塞响应）
+                    asyncio.create_task(
+                        telegram_bot.send_review_request(
+                            request_id=request_id,
+                            media_name=item_name,
+                            media_type=item_type,
+                            cdn_url=cdn_url,
+                            emby_path=emby_path,
+                            host_path=host_path,
+                            media_info={'production_year': production_year}
+                        )
+                    )
+                    logger.info(f"📤 正在发送审核请求到 Telegram...")
+                else:
+                    logger.warning(f"⚠️  审核请求创建失败或已存在")
+
+            elif config.AUTO_APPROVE_IF_NO_REVIEW:
+                logger.info(f"✅ 自动批准模式：CDN URL 将自动预热")
+                # TODO: 直接调用 CDN 预热
+            else:
+                logger.info(f"ℹ️  未启用审核或自动批准，CDN URL 已生成但不会预热")
+        else:
+            logger.warning(f"⚠️  未生成 CDN URL，跳过审核流程")
 
         return {
             'name': item_name,

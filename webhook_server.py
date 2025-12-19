@@ -71,19 +71,19 @@ async def root():
     }
 
 
-@app.post("/webhook/emby")
-async def emby_webhook(request: Request):
+async def handle_emby_webhook(request: Request):
     """
-    接收 Emby Webhook 事件
+    处理 Emby Webhook 事件的核心逻辑
 
     Emby Webhook 数据格式:
     {
-        "Event": "item.added",
+        "Title": "ROC 上新建 惊天魔盗团3",
+        "Event": "library.new",
         "Item": {
-            "Name": "电影名称",
-            "Path": "/media/电影/...",
+            "Name": "惊天魔盗团3",
+            "Path": "/strm/data5/Movie/...",
             "Type": "Movie",
-            "Id": "xxx"
+            "Id": "751181"
         },
         "Server": {...}
     }
@@ -164,6 +164,18 @@ async def emby_webhook(request: Request):
     except Exception as e:
         logger.error(f"处理 Webhook 时出错: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/webhook/emby")
+async def emby_webhook_legacy(request: Request):
+    """接收 Emby Webhook 事件 - 传统路径"""
+    return await handle_emby_webhook(request)
+
+
+@app.post("/emby")
+async def emby_webhook(request: Request):
+    """接收 Emby Webhook 事件 - 简短路径"""
+    return await handle_emby_webhook(request)
 
 
 if __name__ == "__main__":

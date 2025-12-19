@@ -67,9 +67,10 @@ python webhook_server.py
 1. 进入 **插件** -> **Webhook**
 2. 添加新的 Webhook
 3. 设置：
-   - **Webhook URL**: `http://你的服务器IP:8899/webhook/emby`
+   - **Webhook URL**: `http://你的服务器IP:8899/emby` 或 `http://你的服务器IP:8899/webhook/emby`
    - **事件**: 选择 `Item Added` 或 `Library New`
    - **媒体类型**: 选择 `Movies` 和 `Episodes`
+   - **请求内容类型**: 选择 `application/json`
 
 ### 测试
 
@@ -92,9 +93,13 @@ tail -f webhook.log
 
 健康检查端点，返回服务状态。
 
+### POST /emby
+
+接收 Emby Webhook 事件的端点（推荐使用）。
+
 ### POST /webhook/emby
 
-接收 Emby Webhook 事件的端点。
+接收 Emby Webhook 事件的端点（兼容旧版配置）。
 
 ## 日志
 

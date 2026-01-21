@@ -19,25 +19,48 @@
 ```
 🎬 CDN 预热审核请求（共 1 项）
 
-1. 🎬 风之谷
-   🔗 https://your-cdn-domain.com/media/近期添加/动画电影/风之谷 (1984) {tmdbid=81}/风之谷.Nausicaä of the Valley of the Wind.1984.1080p.strm
+1. 🎬 哈尔的移动城堡
+   📹 文件类型: MP4
+   📂 文件: 哈尔的移动城堡.Howl's Moving Castle.2004.2160p.mp4
+   🔗 预热URL: https://your-cdn-domain.com/media/近期添加/动画电影/哈尔的移动城堡 (2004) {tmdbid=4935}/哈尔的移动城堡.Howl's Moving Castle.2004.2160p.mp4
    🆔 ID: 1
 
 💡 使用下方按钮批准或拒绝每个项目
-📝 点击 URL 可查看完整链接
+📝 批准后将立即提交 CDN 预热
+ℹ️ 使用 /detail ID 查看完整路径信息
 ```
 
 ✅ **改进**：
 - 显示完整的 CDN URL，可直接复制
+- 显示文件类型（MP4、MKV 等）
+- 显示实际文件名
 - 更容易判断路径是否正确
 - 提升审核体验
+- 明确提示"批准后将立即提交 CDN 预热"
 
 **修改文件**：
-- `telegram_bot.py` (第 247-253 行)
+- `telegram_bot.py` (批量推送消息格式)
 
 ---
 
-### 2. ✅ 新增路径黑名单功能
+### 2. 🐛 修复 STRM 文件 CDN URL 错误
+
+**问题**：处理 STRM 文件时，智能匹配使用了 `.strm` 文件路径而不是实际的媒体文件路径，导致生成的 CDN URL 是 `.strm` 而不是 `.mp4/.mkv` 等实际文件。
+
+**示例**：
+- Emby 路径：`/media/近期添加/哈尔的移动城堡.strm`
+- 实际文件：`/mnt/media/近期添加/哈尔的移动城堡.mp4`
+- **错误的 CDN URL**：`https://cdn.com/.../哈尔的移动城堡.strm` ❌
+- **正确的 CDN URL**：`https://cdn.com/.../哈尔的移动城堡.mp4` ✅
+
+**修复**：智能匹配现在使用 STRM 解析后的实际文件路径，而不是 STRM 文件本身的路径。
+
+**修改文件**：
+- `webhook_server.py` (第 295 行，智能匹配逻辑)
+
+---
+
+### 3. ✅ 新增路径黑名单功能
 
 **需求**：某些路径不需要进行 CDN 预热，需要一个黑名单机制跳过这些路径。
 

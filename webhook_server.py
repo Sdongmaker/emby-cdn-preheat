@@ -287,12 +287,12 @@ def resolve_media_path(emby_path: str) -> Tuple[Optional[str], Optional[str]]:
         logger.warning(f"  ⚠️  未找到匹配的 CDN 映射规则")
         logger.warning(f"  💡 提示：请检查 config.py 中的 CDN_URL_MAPPINGS 配置")
 
-        # 尝试智能匹配（使用原始 Emby 路径）
+        # 尝试智能匹配（使用实际的宿主机文件路径）
         if config.ENABLE_SMART_URL_MATCHING:
             logger.info("")
             logger.info("  🔄 尝试智能 URL 匹配...")
             logger.info("")
-            cdn_url = smart_match_cdn_url(emby_path)
+            cdn_url = smart_match_cdn_url(host_path)
 
             if cdn_url:
                 logger.info(f"  ✅ 智能匹配成功")

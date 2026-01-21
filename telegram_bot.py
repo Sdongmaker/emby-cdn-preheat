@@ -243,16 +243,38 @@ class TelegramReviewBot:
                 media_type = req['media_type']
                 request_id = req['request_id']
                 cdn_url = req['cdn_url']
+                emby_path = req.get('emby_path', '')
+                host_path = req.get('host_path', '')
 
                 # 简化显示
                 type_emoji = "🎬" if media_type == "Movie" else "📺"
 
+                # 提取文件扩展名
+                file_ext = ""
+                if host_path:
+                    file_ext = host_path.split('.')[-1].upper()
+                elif cdn_url:
+                    file_ext = cdn_url.split('.')[-1].split('?')[0].upper()
+
                 message_text += f"{idx}. {type_emoji} <b>{media_name}</b>\n"
-                message_text += f"   🔗 <code>{cdn_url}</code>\n"
+
+                # 显示文件类型
+                if file_ext:
+                    message_text += f"   📹 文件类型: {file_ext}\n"
+
+                # 显示宿主机路径（实际文件）
+                if host_path:
+                    # 只显示文件名部分
+                    filename = host_path.split('/')[-1]
+                    message_text += f"   📂 文件: <code>{filename}</code>\n"
+
+                # 显示 CDN URL
+                message_text += f"   🔗 预热URL: <code>{cdn_url}</code>\n"
                 message_text += f"   🆔 ID: {request_id}\n\n"
 
             message_text += f"💡 使用下方按钮批准或拒绝每个项目\n"
-            message_text += f"📝 点击 URL 可查看完整链接"
+            message_text += f"📝 批准后将立即提交 CDN 预热\n"
+            message_text += f"ℹ️ 使用 /detail ID 查看完整路径信息"
 
             # 创建按钮（每个请求一行，最多显示配置的数量）
             keyboard = []

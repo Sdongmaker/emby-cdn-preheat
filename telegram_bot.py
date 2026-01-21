@@ -58,6 +58,9 @@ class TelegramReviewBot:
             self.application.add_handler(
                 CommandHandler("pending", self._handle_pending_command)
             )
+            self.application.add_handler(
+                CommandHandler("detail", self._handle_detail_command)
+            )
 
             # 启动 Bot（非阻塞）
             await self.application.initialize()
@@ -234,17 +237,33 @@ class TelegramReviewBot:
             # 构建批量消息文本
             message_text = f"🎬 <b>CDN 预热审核请求</b>（共 {len(requests)} 项）\n\n"
 
-            # 为每个请求创建一行摘要
+            # 为每个请求创建详细信息
             for idx, req in enumerate(requests, 1):
                 media_name = req['media_name']
                 media_type = req['media_type']
                 request_id = req['request_id']
+                cdn_url = req['cdn_url']
 
                 # 简化显示
                 type_emoji = "🎬" if media_type == "Movie" else "📺"
-                message_text += f"{idx}. {type_emoji} <b>{media_name}</b> (ID: {request_id})\n"
 
-            message_text += f"\n💡 使用下方按钮批准或拒绝每个项目"
+                # 截断 URL 以适应显示（显示文件名部分）
+                url_parts = cdn_url.rsplit('/', 1)
+                if len(url_parts) > 1:
+                    filename = url_parts[1]
+                    # 如果文件名太长，截断
+                    if len(filename) > 40:
+                        filename = filename[:37] + "..."
+                    display_url = f".../{filename}"
+                else:
+                    display_url = cdn_url if len(cdn_url) < 40 else cdn_url[:37] + "..."
+
+                message_text += f"{idx}. {type_emoji} <b>{media_name}</b>\n"
+                message_text += f"   📎 <code>{display_url}</code>\n"
+                message_text += f"   🆔 ID: {request_id}\n\n"
+
+            message_text += f"💡 使用下方按钮批准或拒绝每个项目\n"
+            message_text += f"📝 点击 URL 可查看完整链接"
 
             # 创建按钮（每个请求一行，最多显示配置的数量）
             keyboard = []
@@ -442,14 +461,89 @@ class TelegramReviewBot:
         message = f"⏳ <b>待审核列表</b>（最近 {len(pending_requests)} 条）\n\n"
 
         for req in pending_requests:
+            # 截断 URL 显示
+            cdn_url = req['cdn_url']
+            if len(cdn_url) > 50:
+                cdn_url = cdn_url[:47] + "..."
+
             message += (
                 f"🆔 ID: {req['id']}\n"
                 f"🎞 {req['media_name']} ({req['media_type']})\n"
-                f"🔗 {req['cdn_url']}\n"
+                f"🔗 <code>{cdn_url}</code>\n"
                 f"⏰ {req['created_at']}\n\n"
             )
 
+        message += "💡 使用 /detail ID 查看完整信息"
+
         await update.message.reply_text(message, parse_mode='HTML')
+
+    async def _handle_detail_command(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE
+    ):
+        """处理 /detail 命令 - 显示请求详细信息"""
+        if not context.args or len(context.args) == 0:
+            await update.message.reply_text(
+                "❌ 用法: /detail 请求ID\n"
+                "示例: /detail 123"
+            )
+            return
+
+        try:
+            request_id = int(context.args[0])
+        except ValueError:
+            await update.message.reply_text("❌ 无效的请求 ID")
+            return
+
+        request = db.get_request_by_id(request_id)
+        if not request:
+            await update.message.reply_text(f"❌ 未找到请求 ID: {request_id}")
+            return
+
+        # 构建详细消息
+        status_emoji = {
+            'pending': '⏳',
+            'approved': '✅',
+            'rejected': '❌'
+        }.get(request['status'], '❓')
+
+        message = (
+            f"{status_emoji} <b>请求详情</b>\n\n"
+            f"🆔 <b>请求 ID:</b> {request['id']}\n"
+            f"🎞 <b>媒体名称:</b> {request['media_name']}\n"
+            f"📂 <b>类型:</b> {request['media_type']}\n"
+            f"📊 <b>状态:</b> {request['status']}\n\n"
+            f"📍 <b>Emby 路径:</b>\n<code>{request['emby_path']}</code>\n\n"
+            f"💾 <b>宿主机路径:</b>\n<code>{request['host_path']}</code>\n\n"
+            f"🔗 <b>CDN 预热 URL:</b>\n<code>{request['cdn_url']}</code>\n\n"
+            f"⏰ <b>创建时间:</b> {request['created_at']}\n"
+        )
+
+        if request['reviewed_at']:
+            message += (
+                f"✅ <b>审核时间:</b> {request['reviewed_at']}\n"
+                f"👤 <b>审核人:</b> {request['reviewed_by']}\n"
+            )
+
+        # 创建审核按钮（如果还是待审核状态）
+        if request['status'] == 'pending':
+            keyboard = [
+                [
+                    InlineKeyboardButton(
+                        "✅ 同意预热",
+                        callback_data=f"approve_{request_id}"
+                    ),
+                    InlineKeyboardButton(
+                        "❌ 拒绝",
+                        callback_data=f"reject_{request_id}"
+                    )
+                ]
+            ]
+            reply_markup = InlineKeyboardMarkup(keyboard)
+            await update.message.reply_text(message, parse_mode='HTML', reply_markup=reply_markup)
+        else:
+            await update.message.reply_text(message, parse_mode='HTML')
 
 
 # 全局 Bot 实例

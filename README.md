@@ -357,7 +357,8 @@ docker-compose up -d --build
 
 **Bot 命令**:
 - `/stats` - 查看审核统计信息
-- `/pending` - 查看待审核列表
+- `/pending` - 查看待审核列表（最近 10 条）
+- `/detail <ID>` - 查看指定请求的完整信息（包括完整 URL、路径等）
 
 ### 批量推送功能
 

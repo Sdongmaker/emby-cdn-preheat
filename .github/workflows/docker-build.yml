@@ -1,0 +1,63 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ "main" ]    # 推送到 main 分支时触发
+    tags: [ "v*.*.*" ]      # 推送 v1.0.0 格式 tag 时触发
+  pull_request:
+    branches: [ "main" ]    # PR 时只构建测试
+
+env:
+  # 这里已经修改为你截图中的仓库名
+  IMAGE_NAME: tdck/emby-cdn-preheat
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. 检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 设置 Docker Buildx (构建工具，支持缓存)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录 Docker Hub
+      - name: Log into Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          # 请确保在 GitHub 仓库 Settings -> Secrets 里配置了这两个变量
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. 提取元数据 (自动处理 tags: latest 和 vX.X.X)
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=ref,event=tag
+
+      # 5. 构建并推送
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # 指定只构建 amd64 平台
+          platforms: linux/amd64
+          # 使用 GitHub Actions 缓存加速构建
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

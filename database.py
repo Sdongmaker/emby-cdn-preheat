@@ -2,16 +2,18 @@
 数据库模型 - 存储待审核的 CDN 预热请求
 """
 import sqlite3
+import os
+import json
+import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pathlib import Path
-import json
-import logging
 
 logger = logging.getLogger(__name__)
 
 # 数据库文件路径
-DB_FILE = "preheat_review.db"
+# 使用环境变量配置，方便 Docker 部署
+DB_FILE = os.getenv("DB_FILE", "data/preheat_review.db")
 
 
 class ReviewDatabase:
@@ -19,46 +21,75 @@ class ReviewDatabase:
 
     def __init__(self, db_file: str = DB_FILE):
         self.db_file = db_file
+        self._ensure_db_directory()
         self._init_database()
+
+    def _ensure_db_directory(self):
+        """确保数据库文件所在目录存在"""
+        db_path = Path(self.db_file)
+        db_dir = db_path.parent
+
+        # 如果是相对路径且父目录是当前目录，不需要创建
+        if db_dir.name == '.':
+            return
+
+        # 创建目录（如果不存在）
+        try:
+            db_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"数据库目录已确保存在: {db_dir}")
+        except Exception as e:
+            logger.error(f"创建数据库目录失败: {str(e)}")
+            raise
 
     def _init_database(self):
         """初始化数据库表"""
-        with sqlite3.connect(self.db_file) as conn:
-            cursor = conn.cursor()
+        try:
+            with sqlite3.connect(self.db_file) as conn:
+                cursor = conn.cursor()
 
-            # 创建审核请求表
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS review_requests (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    cdn_url TEXT NOT NULL,
-                    media_name TEXT NOT NULL,
-                    media_type TEXT NOT NULL,
-                    emby_path TEXT,
-                    host_path TEXT,
-                    media_info TEXT,
-                    status TEXT DEFAULT 'pending',
-                    telegram_message_id INTEGER,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    reviewed_at TIMESTAMP,
-                    reviewed_by TEXT,
-                    review_action TEXT,
-                    UNIQUE(cdn_url)
-                )
-            """)
+                # 创建审核请求表
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS review_requests (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        cdn_url TEXT NOT NULL,
+                        media_name TEXT NOT NULL,
+                        media_type TEXT NOT NULL,
+                        emby_path TEXT,
+                        host_path TEXT,
+                        media_info TEXT,
+                        status TEXT DEFAULT 'pending',
+                        telegram_message_id INTEGER,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        reviewed_at TIMESTAMP,
+                        reviewed_by TEXT,
+                        review_action TEXT,
+                        UNIQUE(cdn_url)
+                    )
+                """)
 
-            # 创建索引
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_status
-                ON review_requests(status)
-            """)
+                # 创建索引
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_status
+                    ON review_requests(status)
+                """)
 
-            cursor.execute("""
-                CREATE INDEX IF NOT EXISTS idx_created_at
-                ON review_requests(created_at)
-            """)
+                cursor.execute("""
+                    CREATE INDEX IF NOT EXISTS idx_created_at
+                    ON review_requests(created_at)
+                """)
 
-            conn.commit()
-            logger.info("数据库初始化完成")
+                conn.commit()
+                logger.info(f"数据库初始化完成: {self.db_file}")
+
+        except sqlite3.OperationalError as e:
+            logger.error(f"数据库初始化失败: {str(e)}")
+            logger.error(f"数据库文件路径: {self.db_file}")
+            logger.error(f"当前工作目录: {Path.cwd()}")
+            logger.error(f"文件绝对路径: {Path(self.db_file).absolute()}")
+            raise
+        except Exception as e:
+            logger.error(f"数据库初始化失败（未知错误）: {str(e)}")
+            raise
 
     def add_review_request(
         self,

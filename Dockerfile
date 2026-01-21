@@ -17,9 +17,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制应用代码
 COPY *.py ./
 
-# 创建日志目录并设置权限
-RUN mkdir -p /app/logs && \
-    chmod 755 /app/logs
+# 复制启动脚本
+COPY entrypoint.sh /app/entrypoint.sh
+
+# 设置启动脚本权限
+RUN chmod +x /app/entrypoint.sh
+
+# 创建必要的目录并设置权限
+RUN mkdir -p /app/logs /app/data && \
+    chmod 755 /app/logs /app/data /app
 
 # 暴露服务端口
 EXPOSE 8899
@@ -28,5 +34,5 @@ EXPOSE 8899
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8899/')" || exit 1
 
-# 启动服务
-CMD ["python", "webhook_server.py"]
+# 使用启动脚本
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -17,6 +17,9 @@ services:
       # 日志级别
       - LOG_LEVEL=INFO
 
+      # 数据库配置
+      - DB_FILE=data/preheat_review.db
+
       # 腾讯云 API 凭证（请修改为实际值）
       - TENCENT_SECRET_ID=${TENCENT_SECRET_ID:-your_secret_id_here}
       - TENCENT_SECRET_KEY=${TENCENT_SECRET_KEY:-your_secret_key_here}
@@ -46,17 +49,15 @@ services:
       - SMART_MATCH_CDN_BASE=${SMART_MATCH_CDN_BASE:-https://your-cdn-domain.com/}
 
     volumes:
-      # 挂载日志目录
+      # 挂载日志目录（持久化日志）
       - ./logs:/app/logs
 
-      # 挂载数据库文件（持久化审核记录）
-      - ./preheat_review.db:/app/preheat_review.db
+      # 挂载数据库目录（持久化审核记录）
+      - ./data:/app/data
 
-      # 挂载 /media 目录（只读，用于读取 STRM 文件）
+      # 挂载媒体目录（只读，用于读取 STRM 文件）
+      # 根据实际媒体路径修改
       - /media:/media:ro
-
-      # 如果使用 .env 文件，可以取消注释下面这行
-      # - ./.env:/app/.env:ro
 
     networks:
       - 1panel-network

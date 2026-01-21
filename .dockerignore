@@ -30,9 +30,15 @@ ENV/
 *.log
 logs/
 
+# 数据库文件和数据目录
+*.db
+*.db-journal
+data/
+
 # 测试文件
 tests/
 .pytest_cache/
+test_*.py
 
 # 文档
 README.md

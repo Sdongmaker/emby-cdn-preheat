@@ -6,6 +6,21 @@
 
 自动监听 Emby 媒体库新增内容，通过 Telegram 人工审核后提交到腾讯云 CDN 进行预热。
 
+---
+
+## 🚀 快速开始
+
+```bash
+cd /opt
+git clone https://github.com/Sdongmaker/emby-cdn-preheat.git
+cd emby-cdn-preheat
+chmod +x init.sh && ./init.sh
+```
+
+详细说明: [QUICKSTART.md](./QUICKSTART.md) | [完整部署指南](./DEPLOY.md)
+
+---
+
 ## 功能特性
 
 - ✅ 接收 Emby Webhook 事件
@@ -19,7 +34,44 @@
 
 ## 快速开始（推荐 Docker 部署）
 
+> 💡 **生产环境部署**: 完整的部署指南请参考 [DEPLOY.md](./DEPLOY.md)
+
 ### 方式一：使用 Docker Hub 预构建镜像（推荐）
+
+#### 1. 克隆项目并初始化
+
+```bash
+# 克隆到服务器（推荐路径：/opt）
+cd /opt
+git clone https://github.com/Sdongmaker/emby-cdn-preheat.git
+cd emby-cdn-preheat
+
+# 运行初始化脚本
+chmod +x init.sh
+./init.sh
+```
+
+#### 2. 配置环境变量
+
+编辑 `.env` 文件配置必要参数：
+
+```bash
+vim .env
+```
+
+**必填参数**:
+- `TELEGRAM_BOT_TOKEN` - Telegram Bot Token
+- `TELEGRAM_ADMIN_CHAT_IDS` - 管理员 Chat IDs
+
+#### 3. 启动服务
+
+```bash
+docker-compose up -d
+```
+
+---
+
+### 方式二：手动配置（自定义部署）
 
 #### 1. 准备配置文件
 
@@ -127,7 +179,7 @@ docker-compose logs -f
 
 ---
 
-### 方式二：本地源码运行
+### 方式三：本地源码运行
 
 #### 1. 安装依赖
 
@@ -254,7 +306,7 @@ python webhook_server.py
 
 ---
 
-### 方式三：本地构建 Docker 镜像
+### 方式四：本地构建 Docker 镜像
 
 如果你需要修改代码或自定义构建：
 
@@ -474,6 +526,26 @@ docker-compose logs -f
 # 查看日志文件
 tail -f ./logs/webhook.log
 ```
+
+**Q: 遇到数据库权限错误怎么办？**
+
+A: 如果看到 `sqlite3.OperationalError: unable to open database file` 错误：
+
+```bash
+# 1. 停止服务
+docker-compose down
+
+# 2. 创建必要的目录
+mkdir -p data logs
+
+# 3. 设置权限
+chmod 755 data logs
+
+# 4. 重启服务
+docker-compose up -d
+```
+
+详细说明请参考: [数据库权限问题修复文档](./DATABASE_FIX.md)
 
 **Q: 为什么需要 Telegram Bot？**
 

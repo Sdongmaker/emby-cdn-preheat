@@ -1,0 +1,11 @@
+#!/bin/bash
+# Docker Compose 快捷命令（支持新旧版本）
+
+if command -v docker-compose &> /dev/null; then
+    docker-compose "$@"
+elif docker compose version &> /dev/null 2>&1; then
+    docker compose "$@"
+else
+    echo "❌ 未找到 docker-compose 命令"
+    exit 1
+fi

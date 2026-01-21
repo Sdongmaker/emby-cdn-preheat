@@ -463,7 +463,33 @@ tail -f webhook.log
 
 ---
 
+## 故障排查
+
+遇到问题？查看 [故障排查指南](./TROUBLESHOOTING.md)
+
+**快速链接**:
+- [`docker-compose: command not found`](./TROUBLESHOOTING.md#-docker-compose-command-not-found)
+- [数据库权限错误](./TROUBLESHOOTING.md#-sqlite3operationalerror-unable-to-open-database-file)
+- [Telegram Bot 无响应](./TROUBLESHOOTING.md#-telegram-bot-无响应)
+- [容器无法启动](./TROUBLESHOOTING.md#-容器无法启动)
+
+---
+
 ## 常见问题
+
+**Q: 报错 `docker-compose: command not found`？**
+
+A: 新版 Docker 使用 `docker compose`（带空格）而不是 `docker-compose`。
+
+```bash
+# 使用新命令
+docker compose up -d
+
+# 或使用项目提供的快捷命令
+chmod +x dc && ./dc up -d
+```
+
+详细说明: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md#-docker-compose-command-not-found)
 
 **Q: 如何获取 Docker 镜像？**
 

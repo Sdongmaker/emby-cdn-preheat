@@ -51,11 +51,19 @@ chmod +x init.sh
 
 ```bash
 # 启动服务（使用预构建镜像）
-docker-compose up -d
+docker compose up -d
+# 如果使用旧版 Docker，使用: docker-compose up -d
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 ```
+
+> **提示**: 本项目提供了 `./dc` 快捷命令，自动兼容新旧版本：
+> ```bash
+> chmod +x dc
+> ./dc up -d      # 等同于 docker compose up -d
+> ./dc logs -f    # 等同于 docker compose logs -f
+> ```
 
 ---
 
@@ -153,29 +161,33 @@ volumes:
 ### 启动服务
 
 ```bash
-docker-compose up -d
+docker compose up -d
+# 或使用快捷命令: ./dc up -d
 ```
 
 ### 停止服务
 
 ```bash
-docker-compose down
+docker compose down
+# 或: ./dc down
 ```
 
 ### 重启服务
 
 ```bash
-docker-compose restart
+docker compose restart
+# 或: ./dc restart
 ```
 
 ### 查看日志
 
 ```bash
 # 实时日志
-docker-compose logs -f
+docker compose logs -f
+# 或: ./dc logs -f
 
 # 最近 100 行
-docker-compose logs --tail=100
+docker compose logs --tail=100
 
 # 查看日志文件
 tail -f logs/webhook.log
@@ -185,13 +197,14 @@ tail -f logs/webhook.log
 
 ```bash
 # 容器状态
-docker-compose ps
+docker compose ps
+# 或: ./dc ps
 
 # 健康检查
 curl http://localhost:8899/
 
 # 进入容器
-docker-compose exec emby-cdn-preheat bash
+docker compose exec emby-cdn-preheat bash
 ```
 
 ### 更新服务
@@ -201,11 +214,16 @@ docker-compose exec emby-cdn-preheat bash
 git pull origin main
 
 # 拉取最新镜像
-docker-compose pull
+docker compose pull
 
 # 重启服务
-docker-compose up -d
+docker compose up -d
 ```
+
+> **关于 docker-compose vs docker compose**:
+> - 新版 Docker (>= 2020): 使用 `docker compose` (带空格)
+> - 旧版 Docker: 使用 `docker-compose` (带连字符)
+> - 本项目的脚本自动兼容两种方式
 
 ---
 

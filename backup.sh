@@ -5,6 +5,15 @@
 
 set -e
 
+# 检测 docker-compose 命令
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+else
+    DOCKER_COMPOSE="docker compose"  # 默认使用新版命令
+fi
+
 BACKUP_DIR="/opt/backups/emby-cdn-preheat"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="backup-${TIMESTAMP}.tar.gz"
@@ -103,12 +112,12 @@ echo "=========================================="
 echo ""
 echo "📝 恢复方法:"
 echo "   1. 停止服务:"
-echo "      docker-compose down"
+echo "      $DOCKER_COMPOSE down"
 echo ""
 echo "   2. 解压备份:"
 echo "      tar -xzf $BACKUP_DIR/$BACKUP_FILE"
 echo ""
 echo "   3. 启动服务:"
-echo "      docker-compose up -d"
+echo "      $DOCKER_COMPOSE up -d"
 echo ""
 echo "=========================================="

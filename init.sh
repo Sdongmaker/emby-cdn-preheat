@@ -5,6 +5,16 @@
 
 set -e
 
+# 检测 docker-compose 命令
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo "❌ 未找到 docker-compose 或 docker compose 命令"
+    exit 1
+fi
+
 echo "=========================================="
 echo "  Emby CDN 预热服务 - 初始化"
 echo "=========================================="
@@ -99,8 +109,10 @@ else
 fi
 
 if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
     echo "   ✅ Docker Compose: $(docker-compose --version)"
-elif docker compose version &> /dev/null; then
+elif docker compose version &> /dev/null 2>&1; then
+    DOCKER_COMPOSE="docker compose"
     echo "   ✅ Docker Compose: $(docker compose version)"
 else
     echo "   ❌ 未安装 Docker Compose"
@@ -210,40 +222,41 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "🚀 启动服务..."
 
     # 检查是否已有运行的容器
-    if docker-compose ps | grep -q "Up"; then
+    if $DOCKER_COMPOSE ps 2>/dev/null | grep -q "Up"; then
         echo "   ⚠️  检测到已运行的容器"
         read -p "   是否重启? (y/n) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
-            docker-compose restart
+            $DOCKER_COMPOSE restart
             echo "   ✅ 服务已重启"
         else
             echo "   ℹ️  保持当前状态"
         fi
     else
-        docker-compose up -d
+        $DOCKER_COMPOSE up -d
         echo "   ✅ 服务已启动"
     fi
 
     echo ""
     echo "   查看日志:"
-    echo "   docker-compose logs -f"
+    echo "   $DOCKER_COMPOSE logs -f"
     echo ""
 
     # 等待服务启动
     echo "   等待服务启动..."
-    sleep 3
+    sleep 5
 
     # 健康检查
     if curl -s http://localhost:8899/ > /dev/null 2>&1; then
         echo "   ✅ 服务健康检查通过"
     else
         echo "   ⚠️  服务可能未正常启动，请查看日志"
+        echo "   使用命令查看: $DOCKER_COMPOSE logs -f"
     fi
 else
     echo ""
     echo "ℹ️  稍后手动启动服务:"
-    echo "   docker-compose up -d"
+    echo "   $DOCKER_COMPOSE up -d"
 fi
 
 echo ""

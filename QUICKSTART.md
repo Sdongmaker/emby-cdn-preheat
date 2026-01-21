@@ -131,28 +131,31 @@ python test_batch_push.py single
 
 ```bash
 # 启动服务
-docker-compose up -d
+docker compose up -d
+# 或使用快捷命令: ./dc up -d
 
 # 停止服务
-docker-compose down
+docker compose down
 
 # 重启服务
-docker-compose restart
+docker compose restart
 
 # 查看日志
-docker-compose logs -f
+docker compose logs -f
 
 # 查看状态
-docker-compose ps
+docker compose ps
 
 # 更新服务
 git pull
-docker-compose pull
-docker-compose up -d
+docker compose pull
+docker compose up -d
 
 # 备份数据
 ./backup.sh
 ```
+
+> **提示**: 如果报错 `docker-compose: command not found`，使用 `docker compose`（带空格）代替
 
 ---
 
@@ -162,14 +165,32 @@ docker-compose up -d
 
 ```bash
 # 查看详细日志
-docker-compose logs
+docker compose logs
 
 # 检查端口占用
 netstat -tlnp | grep 8899
 
 # 重建容器
-docker-compose down
-docker-compose up -d --force-recreate
+docker compose down
+docker compose up -d --force-recreate
+```
+
+### `docker-compose: command not found` 错误？
+
+新版 Docker 使用 `docker compose`（带空格）而不是 `docker-compose`（带连字符）。
+
+**解决方法**:
+```bash
+# 方式 1: 使用新命令（推荐）
+docker compose up -d
+
+# 方式 2: 使用项目提供的快捷命令
+chmod +x dc
+./dc up -d
+
+# 方式 3: 安装旧版 docker-compose（不推荐）
+sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
 ```
 
 ### 数据库权限错误？
@@ -180,7 +201,7 @@ docker-compose up -d --force-recreate
 
 # 或手动修复
 chmod 755 data/ logs/
-docker-compose restart
+docker compose restart
 ```
 
 ### Telegram Bot 无响应？
@@ -190,7 +211,7 @@ docker-compose restart
 grep TELEGRAM .env
 
 # 查看日志
-docker-compose logs | grep Telegram
+docker compose logs | grep Telegram
 ```
 
 ---

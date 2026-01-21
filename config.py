@@ -86,3 +86,13 @@ REVIEW_TIMEOUT_SECONDS = int(os.getenv("REVIEW_TIMEOUT_SECONDS", "86400"))  # �
 
 # 如果未启用 Telegram 审核，是否自动批准所有预热请求
 AUTO_APPROVE_IF_NO_REVIEW = os.getenv("AUTO_APPROVE_IF_NO_REVIEW", "false").lower() == "true"
+
+# ==================== Telegram 批量推送配置 ====================
+# 批量推送时间间隔（秒）- 收集这么长时间的请求后批量发送
+BATCH_PUSH_INTERVAL = int(os.getenv("BATCH_PUSH_INTERVAL", "30"))
+
+# 批量推送最大数量 - 队列达到这个数量时立即推送（不等待时间间隔）
+BATCH_PUSH_SIZE = int(os.getenv("BATCH_PUSH_SIZE", "10"))
+
+# 单条消息最多包含的媒体数量（Telegram 消息长度限制）
+MAX_ITEMS_PER_MESSAGE = int(os.getenv("MAX_ITEMS_PER_MESSAGE", "5"))

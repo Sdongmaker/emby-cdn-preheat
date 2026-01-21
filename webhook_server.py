@@ -363,9 +363,9 @@ def process_media_item(item_data: Dict[str, Any]) -> Dict[str, str]:
                 if request_id:
                     logger.info(f"✅ 审核请求已创建: ID={request_id}")
 
-                    # 异步发送到 Telegram（不阻塞响应）
+                    # 添加到批量推送队列（不阻塞响应）
                     asyncio.create_task(
-                        telegram_bot.send_review_request(
+                        telegram_bot.add_to_queue(
                             request_id=request_id,
                             media_name=item_name,
                             media_type=item_type,
@@ -375,7 +375,7 @@ def process_media_item(item_data: Dict[str, Any]) -> Dict[str, str]:
                             media_info={'production_year': production_year}
                         )
                     )
-                    logger.info(f"📤 正在发送审核请求到 Telegram...")
+                    logger.info(f"📥 审核请求已加入批量推送队列")
                 else:
                     logger.warning(f"⚠️  审核请求创建失败或已存在")
 

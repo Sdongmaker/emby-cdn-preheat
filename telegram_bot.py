@@ -1,10 +1,12 @@
 """
 Telegram Bot 审核模块
 处理 CDN 预热的人工审核流程
+支持批量推送以避免触发 Telegram 速率限制
 """
 import asyncio
 import logging
-from typing import Optional, Dict, Any
+import time
+from typing import Optional, Dict, Any, List
 from telegram import Bot, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 from telegram.error import TelegramError
@@ -16,13 +18,18 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramReviewBot:
-    """Telegram 审核 Bot"""
+    """Telegram 审核 Bot - 支持批量推送"""
 
     def __init__(self):
         self.bot_token = config.TELEGRAM_BOT_TOKEN
         self.admin_chat_ids = config.TELEGRAM_ADMIN_CHAT_IDS
         self.application: Optional[Application] = None
         self.bot: Optional[Bot] = None
+
+        # 批量推送相关
+        self.review_queue: asyncio.Queue = asyncio.Queue()
+        self.batch_worker_task: Optional[asyncio.Task] = None
+        self.last_push_time: float = 0
 
     async def initialize(self):
         """初始化 Bot"""
@@ -57,8 +64,12 @@ class TelegramReviewBot:
             await self.application.start()
             await self.application.updater.start_polling()
 
+            # 启动批量推送后台任务
+            self.batch_worker_task = asyncio.create_task(self._batch_push_worker())
+
             logger.info("Telegram Bot 启动成功")
             logger.info(f"管理员 Chat IDs: {self.admin_chat_ids}")
+            logger.info(f"批量推送配置: 间隔={config.BATCH_PUSH_INTERVAL}秒, 最大数量={config.BATCH_PUSH_SIZE}")
             return True
 
         except Exception as e:
@@ -67,6 +78,14 @@ class TelegramReviewBot:
 
     async def shutdown(self):
         """关闭 Bot"""
+        # 停止批量推送任务
+        if self.batch_worker_task:
+            self.batch_worker_task.cancel()
+            try:
+                await self.batch_worker_task
+            except asyncio.CancelledError:
+                pass
+
         if self.application:
             try:
                 await self.application.updater.stop()
@@ -76,7 +95,7 @@ class TelegramReviewBot:
             except Exception as e:
                 logger.error(f"关闭 Telegram Bot 失败: {str(e)}")
 
-    async def send_review_request(
+    async def add_to_queue(
         self,
         request_id: int,
         media_name: str,
@@ -85,9 +104,9 @@ class TelegramReviewBot:
         emby_path: str = "",
         host_path: str = "",
         media_info: Dict[str, Any] = None
-    ) -> bool:
+    ):
         """
-        发送审核请求到 Telegram
+        添加审核请求到队列（批量推送）
 
         Args:
             request_id: 请求 ID
@@ -97,34 +116,155 @@ class TelegramReviewBot:
             emby_path: Emby 路径
             host_path: 宿主机路径
             media_info: 媒体详细信息
-
-        Returns:
-            是否发送成功
         """
         if not self.bot:
             logger.error("Telegram Bot 未初始化")
-            return False
+            return
+
+        request_data = {
+            'request_id': request_id,
+            'media_name': media_name,
+            'media_type': media_type,
+            'cdn_url': cdn_url,
+            'emby_path': emby_path,
+            'host_path': host_path,
+            'media_info': media_info or {}
+        }
+
+        await self.review_queue.put(request_data)
+        queue_size = self.review_queue.qsize()
+        logger.info(f"📥 审核请求已加入队列: ID={request_id}, 队列大小={queue_size}")
+
+        # 如果队列达到最大数量，立即触发推送
+        if queue_size >= config.BATCH_PUSH_SIZE:
+            logger.info(f"🚀 队列达到最大数量 ({config.BATCH_PUSH_SIZE})，触发立即推送")
+            # 通过设置时间戳来触发推送
+            self.last_push_time = 0
+
+    async def _batch_push_worker(self):
+        """
+        后台任务：定期检查队列并批量推送
+        触发条件：
+        1. 距离上次推送超过 BATCH_PUSH_INTERVAL 秒
+        2. 队列大小达到 BATCH_PUSH_SIZE
+        """
+        logger.info("📡 批量推送后台任务已启动")
+        self.last_push_time = time.time()
+
+        while True:
+            try:
+                await asyncio.sleep(5)  # 每 5 秒检查一次
+
+                queue_size = self.review_queue.qsize()
+                if queue_size == 0:
+                    continue
+
+                current_time = time.time()
+                time_elapsed = current_time - self.last_push_time
+
+                # 判断是否需要推送
+                should_push = False
+                reason = ""
+
+                if queue_size >= config.BATCH_PUSH_SIZE:
+                    should_push = True
+                    reason = f"队列大小达到 {config.BATCH_PUSH_SIZE}"
+                elif time_elapsed >= config.BATCH_PUSH_INTERVAL:
+                    should_push = True
+                    reason = f"距上次推送已 {int(time_elapsed)} 秒"
+
+                if should_push:
+                    logger.info(f"🔔 触发批量推送: {reason}, 队列大小={queue_size}")
+                    await self._push_batch_from_queue()
+                    self.last_push_time = time.time()
+
+            except asyncio.CancelledError:
+                logger.info("批量推送任务已取消")
+                break
+            except Exception as e:
+                logger.error(f"批量推送任务出错: {str(e)}", exc_info=True)
+                await asyncio.sleep(10)  # 出错后等待 10 秒再继续
+
+    async def _push_batch_from_queue(self):
+        """从队列中取出请求并批量推送"""
+        try:
+            # 从队列中取出所有待推送的请求
+            requests = []
+            while not self.review_queue.empty() and len(requests) < config.BATCH_PUSH_SIZE:
+                try:
+                    request_data = await asyncio.wait_for(
+                        self.review_queue.get(),
+                        timeout=0.1
+                    )
+                    requests.append(request_data)
+                except asyncio.TimeoutError:
+                    break
+
+            if not requests:
+                return
+
+            logger.info(f"📤 准备推送 {len(requests)} 个审核请求")
+
+            # 分组发送（避免单条消息太长）
+            max_per_message = config.MAX_ITEMS_PER_MESSAGE
+            for i in range(0, len(requests), max_per_message):
+                batch = requests[i:i + max_per_message]
+                await self._send_batch_reviews(batch)
+
+                # 批次间短暂延迟，避免速率限制
+                if i + max_per_message < len(requests):
+                    await asyncio.sleep(1)
+
+            logger.info(f"✅ 批量推送完成，共 {len(requests)} 个请求")
+
+        except Exception as e:
+            logger.error(f"批量推送失败: {str(e)}", exc_info=True)
+
+    async def _send_batch_reviews(self, requests: List[Dict[str, Any]]):
+        """
+        发送一批审核请求（合并成一条消息）
+
+        Args:
+            requests: 请求列表
+        """
+        if not requests:
+            return
 
         try:
-            # 构建消息文本
-            message_text = self._build_review_message(
-                request_id, media_name, media_type, cdn_url,
-                emby_path, host_path, media_info
-            )
+            # 构建批量消息文本
+            message_text = f"🎬 <b>CDN 预热审核请求</b>（共 {len(requests)} 项）\n\n"
 
-            # 创建按钮
-            keyboard = [
-                [
+            # 为每个请求创建一行摘要
+            for idx, req in enumerate(requests, 1):
+                media_name = req['media_name']
+                media_type = req['media_type']
+                request_id = req['request_id']
+
+                # 简化显示
+                type_emoji = "🎬" if media_type == "Movie" else "📺"
+                message_text += f"{idx}. {type_emoji} <b>{media_name}</b> (ID: {request_id})\n"
+
+            message_text += f"\n💡 使用下方按钮批准或拒绝每个项目"
+
+            # 创建按钮（每个请求一行，最多显示配置的数量）
+            keyboard = []
+            for req in requests:
+                request_id = req['request_id']
+                media_name = req['media_name']
+                # 截断名称以适应按钮宽度
+                short_name = media_name[:15] + "..." if len(media_name) > 15 else media_name
+
+                keyboard.append([
                     InlineKeyboardButton(
-                        "✅ 同意预热",
+                        f"✅ {short_name}",
                         callback_data=f"approve_{request_id}"
                     ),
                     InlineKeyboardButton(
-                        "❌ 拒绝",
+                        f"❌",
                         callback_data=f"reject_{request_id}"
                     )
-                ]
-            ]
+                ])
+
             reply_markup = InlineKeyboardMarkup(keyboard)
 
             # 发送消息给所有管理员
@@ -137,20 +277,19 @@ class TelegramReviewBot:
                         parse_mode='HTML'
                     )
 
-                    # 更新数据库中的消息 ID
-                    db.update_telegram_message_id(request_id, message.message_id)
+                    # 更新数据库中的消息 ID（使用第一个请求的 ID）
+                    if requests:
+                        first_request_id = requests[0]['request_id']
+                        db.update_telegram_message_id(first_request_id, message.message_id)
 
-                    logger.info(f"发送审核请求到 Telegram 成功: chat_id={chat_id}, request_id={request_id}")
+                    logger.info(f"✅ 批量消息发送成功: chat_id={chat_id}, 包含 {len(requests)} 个请求")
 
                 except TelegramError as e:
-                    logger.error(f"发送消息到 {chat_id} 失败: {str(e)}")
+                    logger.error(f"发送批量消息到 {chat_id} 失败: {str(e)}")
                     continue
 
-            return True
-
         except Exception as e:
-            logger.error(f"发送审核请求失败: {str(e)}")
-            return False
+            logger.error(f"发送批量审核请求失败: {str(e)}", exc_info=True)
 
     def _build_review_message(
         self,

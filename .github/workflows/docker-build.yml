@@ -9,7 +9,7 @@ on:
 
 env:
   # 这里已经修改为你截图中的仓库名
-  IMAGE_NAME: tdck/emby-cdn-preheat
+  IMAGE_NAME: tdck/emby-cdn-preheat:v1.0.0
 
 jobs:
   build-and-push:

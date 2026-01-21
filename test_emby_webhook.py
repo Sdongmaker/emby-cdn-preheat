@@ -8,87 +8,139 @@ import requests
 import json
 import time
 import sys
+import random
+import string
 from typing import Dict, Any, List
 
 # 配置
 WEBHOOK_URL = "http://104.36.21.247:8899/emby"  # 云服务器地址
 
-# 模拟的媒体数据
-TEST_MEDIA = [
-    # 电影
-    {
-        "Name": "复仇者联盟4：终局之战",
-        "Type": "Movie",
-        "Path": "/media/电影/复仇者联盟4：终局之战 (2019)/复仇者联盟4：终局之战.mkv",
-        "Id": "movie_001",
-        "ProductionYear": 2019
-    },
-    {
-        "Name": "流浪地球2",
-        "Type": "Movie",
-        "Path": "/media/电影/流浪地球2 (2023)/流浪地球2.mp4",
-        "Id": "movie_002",
-        "ProductionYear": 2023
-    },
-    {
-        "Name": "教父",
-        "Type": "Movie",
-        "Path": "/media/电影/教父 (1972)/教父.mkv",
-        "Id": "movie_003",
-        "ProductionYear": 1972
-    },
-
-    # 剧集
-    {
-        "Name": "权力的游戏 S01E01",
-        "Type": "Episode",
-        "Path": "/media/剧集/权力的游戏/Season 01/权力的游戏 - S01E01 - 凛冬将至.mkv",
-        "Id": "episode_001",
-        "ProductionYear": 2011,
-        "SeriesName": "权力的游戏",
-        "Season": 1,
-        "Episode": 1
-    },
-    {
-        "Name": "绝命毒师 S01E01",
-        "Type": "Episode",
-        "Path": "/media/剧集/绝命毒师/Season 01/绝命毒师 - S01E01.mkv",
-        "Id": "episode_002",
-        "ProductionYear": 2008,
-        "SeriesName": "绝命毒师",
-        "Season": 1,
-        "Episode": 1
-    },
-    {
-        "Name": "瑞克和莫蒂 S01E01",
-        "Type": "Episode",
-        "Path": "/media/剧集/瑞克和莫蒂/Season 01/瑞克和莫蒂 - S01E01.mp4",
-        "Id": "episode_003",
-        "ProductionYear": 2013,
-        "SeriesName": "瑞克和莫蒂",
-        "Season": 1,
-        "Episode": 1
-    },
-
-    # STRM 文件测试
-    {
-        "Name": "星际穿越 (STRM)",
-        "Type": "Movie",
-        "Path": "/media/电影/星际穿越 (2014)/星际穿越.strm",
-        "Id": "movie_strm_001",
-        "ProductionYear": 2014
-    },
-    {
-        "Name": "黑镜 S01E01 (STRM)",
-        "Type": "Episode",
-        "Path": "/media/剧集/黑镜/Season 01/黑镜 - S01E01.strm",
-        "Id": "episode_strm_001",
-        "ProductionYear": 2011,
-        "SeriesName": "黑镜",
-        "Season": 1,
-        "Episode": 1
-    },
+# 随机数据生成配置
+MOVIE_NAMES = [
+    "复仇者联盟", "流浪地球", "教父", "肖申克的救赎", "霸王别姬",
+    "这个杀手不太冷", "阿甘正传", "泰坦尼克号", "盗梦空间", "星际穿越",
+    "蝙蝠侠", "蜘蛛侠", "钢铁侠", "美国队长", "黑客帝国",
+    "指环王", "哈利波特", "速度与激情", "变形金刚", "侏罗纪公园",
+    "沉默的羔羊", "辛德勒的名单", "低俗小说", "楚门的世界", "海上钢琴师"
 ]
+
+TV_NAMES = [
+    "权力的游戏", "绝命毒师", "瑞克和莫蒂", "黑镜", "西部世界",
+    "怪奇物语", "纸牌屋", "行尸走肉", "真探", "冰与火之歌",
+    "生活大爆炸", "老友记", "越狱", "24小时", "迷失",
+    "美国恐怖故事", "汉尼拔", "神盾局特工", "闪电侠", "绿箭侠"
+]
+
+FILE_EXTENSIONS = [".mkv", ".mp4", ".avi", ".mov", ".m4v"]
+
+def generate_random_id():
+    """生成随机 ID"""
+    timestamp = int(time.time() * 1000)
+    random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
+    return f"{timestamp}_{random_str}"
+
+def generate_random_movie(use_strm=False):
+    """
+    生成随机电影数据
+
+    Args:
+        use_strm: 是否生成 STRM 文件
+
+    Returns:
+        电影数据字典
+    """
+    movie_name = random.choice(MOVIE_NAMES)
+    year = random.randint(2000, 2024)
+    sequence = random.randint(1, 5)
+
+    # 添加序号避免名称完全重复
+    if sequence > 1:
+        movie_name = f"{movie_name}{sequence}"
+
+    ext = ".strm" if use_strm else random.choice(FILE_EXTENSIONS)
+
+    movie_data = {
+        "Name": f"{movie_name} ({year})",
+        "Type": "Movie",
+        "Path": f"/media/电影/{movie_name} ({year})/{movie_name}{ext}",
+        "Id": generate_random_id(),
+        "ProductionYear": year
+    }
+
+    return movie_data
+
+
+def generate_random_episode(use_strm=False):
+    """
+    生成随机剧集数据
+
+    Args:
+        use_strm: 是否生成 STRM 文件
+
+    Returns:
+        剧集数据字典
+    """
+    tv_name = random.choice(TV_NAMES)
+    season = random.randint(1, 5)
+    episode = random.randint(1, 10)
+    year = random.randint(2010, 2024)
+
+    # 添加随机后缀避免名称完全重复
+    suffix = random.choice(['', 'Plus', 'Special', 'Director Cut', ''])
+    if suffix:
+        tv_name = f"{tv_name} {suffix}"
+
+    ext = ".strm" if use_strm else random.choice(FILE_EXTENSIONS)
+
+    episode_data = {
+        "Name": f"{tv_name} S{season:02d}E{episode:02d}",
+        "Type": "Episode",
+        "Path": f"/media/剧集/{tv_name}/Season {season:02d}/{tv_name} - S{season:02d}E{episode:02d}{ext}",
+        "Id": generate_random_id(),
+        "ProductionYear": year,
+        "SeriesName": tv_name,
+        "Season": season,
+        "Episode": episode
+    }
+
+    return episode_data
+
+
+def generate_test_media(count=8, movie_ratio=0.5, strm_ratio=0.25):
+    """
+    生成测试媒体列表
+
+    Args:
+        count: 生成数量
+        movie_ratio: 电影占比（0-1）
+        strm_ratio: STRM 文件占比（0-1）
+
+    Returns:
+        媒体列表
+    """
+    media_list = []
+
+    movie_count = int(count * movie_ratio)
+    episode_count = count - movie_count
+
+    # 生成电影
+    for _ in range(movie_count):
+        use_strm = random.random() < strm_ratio
+        media_list.append(generate_random_movie(use_strm))
+
+    # 生成剧集
+    for _ in range(episode_count):
+        use_strm = random.random() < strm_ratio
+        media_list.append(generate_random_episode(use_strm))
+
+    # 打乱顺序
+    random.shuffle(media_list)
+
+    return media_list
+
+
+# 生成默认测试数据（每次运行都不同）
+TEST_MEDIA = generate_test_media(count=8, movie_ratio=0.5, strm_ratio=0.2)
 
 
 def build_emby_webhook_payload(media_item: Dict[str, Any]) -> Dict[str, Any]:
@@ -400,17 +452,19 @@ def show_menu():
     print_banner()
     print("选择测试模式:")
     print()
-    print("  1. 单项测试 - 测试单个媒体（电影）")
-    print("  2. 批量测试 - 测试所有预设媒体（触发批量推送）")
-    print("  3. 快速测试 - 测试 3 个媒体")
-    print("  4. 电影测试 - 只测试电影")
-    print("  5. 剧集测试 - 只测试剧集")
-    print("  6. STRM 测试 - 只测试 STRM 文件")
-    print("  7. 自定义测试 - 手动输入媒体信息")
-    print("  8. 健康检查 - 只检查服务器状态")
-    print("  9. 修改服务器地址")
+    print("  1. 单项测试 - 随机生成1个媒体")
+    print("  2. 批量测试 - 随机生成8个媒体（触发批量推送）")
+    print("  3. 快速测试 - 随机生成3个媒体")
+    print("  4. 电影测试 - 随机生成5个电影")
+    print("  5. 剧集测试 - 随机生成5个剧集")
+    print("  6. STRM 测试 - 随机生成5个STRM文件")
+    print("  7. 自定义数量 - 指定生成数量")
+    print("  8. 自定义测试 - 手动输入媒体信息")
+    print("  9. 健康检查 - 只检查服务器状态")
+    print("  s. 修改服务器地址")
     print("  0. 退出")
     print()
+    print("💡 提示: 每次测试都会生成全新的随机数据，避免重复")
 
 
 def main():
@@ -427,47 +481,85 @@ def main():
 
     while True:
         show_menu()
-        choice = input("请选择 (0-9): ").strip()
+        choice = input("请选择: ").strip().lower()
         print()
 
         if choice == "1":
-            # 单项测试 - 电影
-            test_single(TEST_MEDIA[0], WEBHOOK_URL)
+            # 单项测试 - 随机生成1个
+            media = generate_random_movie() if random.random() > 0.5 else generate_random_episode()
+            test_single(media, WEBHOOK_URL)
 
         elif choice == "2":
-            # 批量测试 - 所有媒体
-            test_batch(TEST_MEDIA, WEBHOOK_URL, delay=0.5)
+            # 批量测试 - 随机生成8个（不使用 STRM）
+            print("🎲 正在生成8个随机媒体（不使用 STRM）...")
+            test_media = generate_test_media(count=8, movie_ratio=0.5, strm_ratio=0.0)
+            print(f"✅ 已生成: {sum(1 for m in test_media if m['Type']=='Movie')} 电影, "
+                  f"{sum(1 for m in test_media if m['Type']=='Episode')} 剧集\n")
+            test_batch(test_media, WEBHOOK_URL, delay=0.5)
 
         elif choice == "3":
-            # 快速测试 - 3个媒体
-            test_batch(TEST_MEDIA[:3], WEBHOOK_URL, delay=0.5)
+            # 快速测试 - 随机生成3个（不使用 STRM）
+            print("🎲 正在生成3个随机媒体（不使用 STRM）...")
+            test_media = generate_test_media(count=3, movie_ratio=0.5, strm_ratio=0.0)
+            print(f"✅ 已生成: {sum(1 for m in test_media if m['Type']=='Movie')} 电影, "
+                  f"{sum(1 for m in test_media if m['Type']=='Episode')} 剧集\n")
+            test_batch(test_media, WEBHOOK_URL, delay=0.5)
 
         elif choice == "4":
-            # 电影测试
-            movies = [m for m in TEST_MEDIA if m["Type"] == "Movie"]
+            # 电影测试 - 随机生成5个电影
+            print("🎲 正在生成5个随机电影...")
+            movies = [generate_random_movie(use_strm=random.random() < 0.2) for _ in range(5)]
+            print(f"✅ 已生成: {sum(1 for m in movies if '.strm' in m['Path'])} 个STRM文件\n")
             test_batch(movies, WEBHOOK_URL, delay=0.5)
 
         elif choice == "5":
-            # 剧集测试
-            episodes = [m for m in TEST_MEDIA if m["Type"] == "Episode"]
+            # 剧集测试 - 随机生成5个剧集
+            print("🎲 正在生成5个随机剧集...")
+            episodes = [generate_random_episode(use_strm=random.random() < 0.2) for _ in range(5)]
+            print(f"✅ 已生成: {sum(1 for e in episodes if '.strm' in e['Path'])} 个STRM文件\n")
             test_batch(episodes, WEBHOOK_URL, delay=0.5)
 
         elif choice == "6":
-            # STRM 测试
-            strm_files = [m for m in TEST_MEDIA if ".strm" in m["Path"]]
+            # STRM 测试 - 随机生成5个STRM文件
+            print("🎲 正在生成5个随机STRM文件...")
+            strm_files = []
+            for _ in range(5):
+                if random.random() > 0.5:
+                    strm_files.append(generate_random_movie(use_strm=True))
+                else:
+                    strm_files.append(generate_random_episode(use_strm=True))
+            print(f"✅ 已生成: {sum(1 for m in strm_files if m['Type']=='Movie')} 电影, "
+                  f"{sum(1 for m in strm_files if m['Type']=='Episode')} 剧集\n")
             test_batch(strm_files, WEBHOOK_URL, delay=0.5)
 
         elif choice == "7":
+            # 自定义数量
+            try:
+                count = int(input("输入要生成的媒体数量 [8]: ").strip() or "8")
+                if count <= 0 or count > 100:
+                    print("❌ 数量必须在 1-100 之间")
+                    continue
+
+                print(f"\n🎲 正在生成{count}个随机媒体...")
+                test_media = generate_test_media(count=count, movie_ratio=0.5, strm_ratio=0.2)
+                print(f"✅ 已生成: {sum(1 for m in test_media if m['Type']=='Movie')} 电影, "
+                      f"{sum(1 for m in test_media if m['Type']=='Episode')} 剧集, "
+                      f"{sum(1 for m in test_media if '.strm' in m['Path'])} STRM文件\n")
+                test_batch(test_media, WEBHOOK_URL, delay=0.5)
+            except ValueError:
+                print("❌ 无效的数量")
+
+        elif choice == "8":
             # 自定义测试
             test_custom()
 
-        elif choice == "8":
+        elif choice == "9":
             # 健康检查
             print_banner()
             test_server_health(WEBHOOK_URL)
             print()
 
-        elif choice == "9":
+        elif choice == "s":
             # 修改服务器地址
             print("当前服务器地址:", WEBHOOK_URL)
             new_url = input("输入新地址 (如 http://104.36.21.247:8899/emby): ").strip()

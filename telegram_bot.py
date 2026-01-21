@@ -247,19 +247,8 @@ class TelegramReviewBot:
                 # 简化显示
                 type_emoji = "🎬" if media_type == "Movie" else "📺"
 
-                # 截断 URL 以适应显示（显示文件名部分）
-                url_parts = cdn_url.rsplit('/', 1)
-                if len(url_parts) > 1:
-                    filename = url_parts[1]
-                    # 如果文件名太长，截断
-                    if len(filename) > 40:
-                        filename = filename[:37] + "..."
-                    display_url = f".../{filename}"
-                else:
-                    display_url = cdn_url if len(cdn_url) < 40 else cdn_url[:37] + "..."
-
                 message_text += f"{idx}. {type_emoji} <b>{media_name}</b>\n"
-                message_text += f"   📎 <code>{display_url}</code>\n"
+                message_text += f"   🔗 <code>{cdn_url}</code>\n"
                 message_text += f"   🆔 ID: {request_id}\n\n"
 
             message_text += f"💡 使用下方按钮批准或拒绝每个项目\n"

@@ -41,6 +41,22 @@ CDN_URL_MAPPINGS = {
     "/media/": "https://qiufeng.huaijiufu.com/",
 }
 
+# 4. 不预热路径黑名单
+# 包含这些路径的媒体将不会提交预热请求
+# 注意：这些是 Emby 容器路径，在路径映射之前进行检查
+# 可以通过环境变量 PREHEAT_BLACKLIST_PATHS 配置（用逗号分隔）
+PREHEAT_BLACKLIST_PATHS = [
+    path.strip()
+    for path in os.getenv("PREHEAT_BLACKLIST_PATHS", "").split(",")
+    if path.strip()
+] or [
+    # 默认黑名单（如果环境变量未设置）
+    # 示例：跳过某些特定目录
+    # "/media/近期添加/",      # 跳过"近期添加"目录
+    # "/media/test/",          # 跳过测试目录
+    # "/media/temp/",          # 跳过临时目录
+]
+
 # ==================== 智能 URL 匹配配置 ====================
 # 用于单体 Emby 部署，当标准路径映射失败时启用
 

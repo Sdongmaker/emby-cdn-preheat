@@ -341,6 +341,24 @@ def process_media_item(item_data: Dict[str, Any]) -> Dict[str, str]:
         logger.info(f"收到新媒体: {item_name} ({item_type})")
         logger.info(f"Emby 路径: {emby_path}")
 
+        # 检查路径是否在黑名单中
+        if config.PREHEAT_BLACKLIST_PATHS:
+            for blacklist_path in config.PREHEAT_BLACKLIST_PATHS:
+                if emby_path.startswith(blacklist_path):
+                    logger.warning(f"⛔ 路径在黑名单中，跳过预热: {blacklist_path}")
+                    logger.info(f"媒体项目处理完成: {item_name} (已跳过)")
+                    return {
+                        'name': item_name,
+                        'type': item_type,
+                        'emby_path': emby_path,
+                        'host_path': None,
+                        'cdn_url': None,
+                        'id': item_id,
+                        'skipped': True,
+                        'reason': f'路径在黑名单中: {blacklist_path}',
+                        'processed_at': datetime.now().isoformat()
+                    }
+
         # 解析路径，处理容器映射和 strm 文件
         host_path, cdn_url = resolve_media_path(emby_path)
 
